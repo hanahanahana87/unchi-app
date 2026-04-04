@@ -1,0 +1,846 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="うんち記録">
+<meta name="theme-color" content="#E8834A">
+<title>💩 うんち記録</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{
+  --primary:#E8834A;--primary-light:#F0A070;--primary-bg:#FDF3EC;
+  --bg:#F4F4F8;--card:#FFFFFF;--text:#1C1C1E;--text2:#8E8E93;
+  --border:#E5E5EA;--red:#FF3B30;--orange:#FF9500;--blue:#007AFF;
+  --radius:14px;--shadow:0 2px 10px rgba(0,0,0,0.08);
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans','Yu Gothic UI',sans-serif;background:var(--bg);color:var(--text);height:100dvh;overflow:hidden;display:flex;flex-direction:column;padding-top:env(safe-area-inset-top)}
+.header{background:var(--primary);color:#fff;padding:12px 16px 10px;font-size:18px;font-weight:700;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;box-shadow:0 1px 0 rgba(0,0,0,0.15)}
+.header-right{display:flex;gap:8px;align-items:center}
+.header-btn{background:rgba(255,255,255,0.2);border:none;color:#fff;padding:6px 12px;border-radius:8px;font-family:inherit;font-size:13px;cursor:pointer}
+.sync-badge{background:rgba(255,255,255,0.2);border:none;color:#fff;padding:6px 10px;border-radius:8px;font-size:13px;cursor:pointer;display:flex;align-items:center;gap:5px}
+.sync-dot{width:8px;height:8px;border-radius:50%;background:#4CD964;flex-shrink:0}
+.sync-dot.warn{background:#FF9500}.sync-dot.err{background:#FF3B30}.sync-dot.none{background:#8E8E93}
+.content{flex:1;overflow-y:auto;padding:0 0 84px;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+.bottom-nav{position:fixed;bottom:0;left:0;right:0;background:rgba(255,255,255,0.95);-webkit-backdrop-filter:blur(20px);border-top:1px solid var(--border);display:flex;padding-bottom:env(safe-area-inset-bottom);z-index:100}
+.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;padding:8px 4px 4px;gap:2px;font-size:10px;color:var(--text2);cursor:pointer;border:none;background:none;transition:color 0.15s;font-family:inherit}
+.nav-item.active{color:var(--primary)}
+.nav-item .icon{font-size:22px;line-height:1}
+.card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);margin:10px 16px;overflow:hidden}
+.section-title{font-size:13px;font-weight:600;color:var(--text2);letter-spacing:0.3px;padding:16px 20px 6px;text-transform:uppercase}
+.form-group{margin:0 16px 14px}
+.form-label{font-size:13px;color:var(--text2);margin-bottom:6px;display:block;font-weight:500}
+.btn-group{display:flex;gap:8px}
+.btn-option{flex:1;padding:11px 4px;border:1.5px solid var(--border);border-radius:10px;background:#fff;color:var(--text);font-size:14px;font-family:inherit;cursor:pointer;transition:all 0.15s;text-align:center;line-height:1.4}
+.btn-option:active{transform:scale(0.97)}
+.btn-option.selected{border-color:var(--primary);background:var(--primary);color:#fff;font-weight:600}
+.toggle-row{display:flex;align-items:center;justify-content:space-between;margin:0 16px 14px;background:#fff;border-radius:10px;padding:12px 14px;box-shadow:0 1px 4px rgba(0,0,0,0.06)}
+.toggle{position:relative;width:51px;height:31px}
+.toggle input{opacity:0;width:0;height:0}
+.toggle-slider{position:absolute;inset:0;background:#D1D1D6;border-radius:31px;transition:.3s;cursor:pointer}
+.toggle-slider:before{content:'';position:absolute;width:27px;height:27px;left:2px;bottom:2px;background:#fff;border-radius:50%;transition:.3s;box-shadow:0 2px 6px rgba(0,0,0,0.25)}
+.toggle input:checked+.toggle-slider{background:var(--red)}
+.toggle input:checked+.toggle-slider:before{transform:translateX(20px)}
+textarea,input[type=datetime-local],input[type=text],input[type=password]{width:100%;padding:11px 13px;border:1.5px solid var(--border);border-radius:10px;font-family:inherit;font-size:15px;outline:none;transition:border-color 0.15s;background:#fff;color:var(--text)}
+textarea{resize:none}
+textarea:focus,input:focus{border-color:var(--primary)}
+.btn-primary{display:block;width:calc(100% - 32px);margin:6px 16px 16px;padding:16px;background:var(--primary);color:#fff;border:none;border-radius:14px;font-size:17px;font-weight:700;font-family:inherit;cursor:pointer;transition:background 0.15s}
+.btn-primary:active{background:var(--primary-light)}
+.btn-secondary{display:block;width:calc(100% - 32px);margin:4px 16px;padding:14px;background:#fff;color:var(--primary);border:1.5px solid var(--primary);border-radius:14px;font-size:16px;font-weight:600;font-family:inherit;cursor:pointer}
+.med-bar{margin:0 16px 14px;padding:12px 14px;background:var(--primary-bg);border-radius:10px;display:flex;align-items:center;justify-content:space-between}
+.btn-outline-sm{background:#fff;border:1.5px solid var(--primary);border-radius:7px;padding:5px 12px;font-size:13px;color:var(--primary);font-family:inherit;cursor:pointer;font-weight:600}
+.filter-bar{display:flex;gap:8px;padding:12px 16px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.filter-bar::-webkit-scrollbar{display:none}
+.filter-btn{flex-shrink:0;padding:7px 16px;border:1.5px solid var(--border);border-radius:20px;background:#fff;font-size:13px;font-family:inherit;cursor:pointer;white-space:nowrap;color:var(--text);transition:all 0.15s}
+.filter-btn.active{border-color:var(--primary);background:var(--primary);color:#fff;font-weight:600}
+.record-item{padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;cursor:pointer;transition:background 0.1s}
+.record-item:last-child{border-bottom:none}
+.record-item:active{background:#f5f5f5}
+.record-emoji{font-size:30px;flex-shrink:0}
+.record-info{flex:1;min-width:0}
+.record-date{font-size:12px;color:var(--text2);margin-bottom:2px}
+.record-main{font-size:14px;font-weight:500}
+.record-badges{display:flex;gap:4px;margin-top:5px;flex-wrap:wrap}
+.badge{font-size:11px;padding:2px 8px;border-radius:20px;font-weight:500}
+.badge-blood{background:#FFE5E3;color:#C0392B}
+.badge-soft{background:#E3F0FF;color:#1A6BB5}
+.badge-hard{background:#FFF3E0;color:#C07000}
+.badge-small{background:#F0F0F0;color:#666}
+.badge-large{background:#EDE7F6;color:#6A1E8A}
+.badge-watch{background:#E8F4FF;color:#0066CC}
+.empty{text-align:center;padding:48px 16px;color:var(--text2)}
+.empty-icon{font-size:60px;margin-bottom:12px}
+.group-header{padding:7px 16px;background:#F9F9F9;font-size:12px;font-weight:600;color:var(--text2);border-bottom:1px solid var(--border);border-top:1px solid var(--border)}
+.stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:12px 16px 0}
+.stat-card{background:#fff;border-radius:12px;box-shadow:var(--shadow);padding:16px;text-align:center}
+.stat-num{font-size:30px;font-weight:700;color:var(--primary)}
+.stat-label{font-size:11px;color:var(--text2);margin-top:3px;font-weight:500}
+.chart-container{padding:14px;position:relative;height:220px}
+.chart-container-sm{padding:14px;position:relative;height:190px}
+.med-today-card{margin:10px 16px;background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);padding:20px;display:flex;align-items:center;justify-content:space-between}
+.med-amount{font-size:36px;font-weight:700;color:var(--primary)}
+.btn-change{padding:11px 22px;border:1.5px solid var(--primary);border-radius:10px;background:#fff;color:var(--primary);font-size:15px;font-weight:600;font-family:inherit;cursor:pointer}
+.med-hist-item{padding:13px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.med-hist-item:last-child{border-bottom:none}
+.setting-item{display:flex;align-items:center;justify-content:space-between;padding:15px 16px;border-bottom:1px solid var(--border);cursor:pointer;transition:background 0.1s}
+.setting-item:last-child{border-bottom:none}
+.setting-item:active{background:#f5f5f5}
+.setting-left{display:flex;align-items:center;gap:12px}
+.inp-row{display:flex;gap:8px;margin-bottom:10px}
+.inp-row input{flex:1}
+.inp-row button{flex-shrink:0;padding:0 14px;background:var(--primary);color:#fff;border:none;border-radius:10px;font-family:inherit;font-size:14px;font-weight:600;cursor:pointer;white-space:nowrap}
+.status-bar{padding:10px 14px;border-radius:10px;font-size:13px;display:flex;align-items:center;gap:8px;margin-bottom:12px;line-height:1.5}
+.status-bar.ok{background:#EEF4E8;color:#3A6B1A}
+.status-bar.warn{background:#FFF8E6;color:#7A5C00}
+.status-bar.err{background:#FFF0EF;color:#C0392B}
+.code-block{background:#1C1C1E;color:#A8FF78;border-radius:10px;padding:14px;font-family:'SF Mono',Menlo,monospace;font-size:11px;line-height:1.9;white-space:pre;overflow-x:auto;margin:8px 0}
+.step-row{display:flex;align-items:flex-start;margin-bottom:10px;font-size:13px;line-height:1.6;gap:8px}
+.step-num{width:22px;height:22px;border-radius:50%;background:var(--primary);color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+.tip-box{background:#FFF9E6;border:1px solid #FFD60A;border-radius:10px;padding:12px 14px;font-size:13px;color:#7A5C00;margin-top:10px;line-height:1.6}
+.gh-badge{display:inline-flex;align-items:center;gap:4px;background:#24292e;color:#fff;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:200;display:flex;align-items:flex-end}
+.modal-overlay.hidden{display:none}
+.modal{background:#fff;border-radius:22px 22px 0 0;padding:20px 16px 8px;width:100%;padding-bottom:calc(16px + env(safe-area-inset-bottom));max-height:88vh;overflow-y:auto}
+.modal-drag{width:40px;height:4px;background:#D1D1D6;border-radius:2px;margin:0 auto 18px}
+.modal h3{font-size:18px;font-weight:700;margin-bottom:4px}
+.modal-close{position:absolute;right:16px;top:20px;background:#F2F2F7;border:none;cursor:pointer;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;color:var(--text2)}
+.number-input-row{display:flex;align-items:center;justify-content:center;gap:24px;margin:24px 0 8px}
+.num-btn{width:52px;height:52px;border-radius:50%;border:2px solid var(--primary);background:#fff;font-size:30px;color:var(--primary);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.15s}
+.num-btn:active{background:var(--primary);color:#fff}
+.num-display{font-size:52px;font-weight:700;color:var(--primary);min-width:90px;text-align:center}
+.num-unit{text-align:center;font-size:15px;color:var(--text2);margin-bottom:20px}
+.detail-row{display:flex;justify-content:space-between;align-items:flex-start;padding:12px 0;border-bottom:1px solid var(--border);font-size:15px;gap:12px}
+.detail-row:last-of-type{border-bottom:none}
+.detail-key{color:var(--text2);flex-shrink:0;font-size:14px}
+.detail-val{font-weight:500;text-align:right}
+.btn-delete{width:100%;padding:14px;background:#fff;border:1.5px solid var(--red);border-radius:12px;color:var(--red);font-size:16px;font-weight:600;font-family:inherit;cursor:pointer;margin-top:16px}
+.toast{position:fixed;bottom:calc(86px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%) translateY(10px);background:rgba(50,50,50,0.92);color:#fff;padding:11px 22px;border-radius:22px;font-size:14px;z-index:300;opacity:0;transition:all 0.25s;white-space:nowrap}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+@keyframes spin{to{transform:rotate(360deg)}}
+.spin{animation:spin 1s linear infinite;display:inline-block}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <span>💩 うんち記録</span>
+  <div class="header-right">
+    <button class="sync-badge" onclick="manualSync()" id="syncBadge">
+      <span class="sync-dot none" id="syncDot"></span>
+      <span id="syncLabel">未設定</span>
+    </button>
+    <button class="header-btn" onclick="showMedDialog()">💊 薬</button>
+  </div>
+</div>
+
+<div class="content" id="mainContent"></div>
+
+<nav class="bottom-nav">
+  <button class="nav-item active" onclick="showTab('record')" id="nav-record"><span class="icon">✏️</span><span>記録</span></button>
+  <button class="nav-item" onclick="showTab('history')" id="nav-history"><span class="icon">📋</span><span>履歴</span></button>
+  <button class="nav-item" onclick="showTab('chart')" id="nav-chart"><span class="icon">📊</span><span>グラフ</span></button>
+  <button class="nav-item" onclick="showTab('meds')" id="nav-meds"><span class="icon">💊</span><span>薬</span></button>
+  <button class="nav-item" onclick="showTab('settings')" id="nav-settings"><span class="icon">⚙️</span><span>設定</span></button>
+</nav>
+
+<!-- 薬モーダル -->
+<div class="modal-overlay hidden" id="medModal" onclick="closeMedModal(event)">
+  <div class="modal" style="position:relative">
+    <div class="modal-drag"></div>
+    <button class="modal-close" onclick="closeMedModal()">✕</button>
+    <h3>💊 今日の薬の量</h3>
+    <div style="font-size:13px;color:var(--text2);margin-bottom:4px" id="medModalDate"></div>
+    <div class="number-input-row">
+      <button class="num-btn" onclick="adjustMed(-0.5)">－</button>
+      <div class="num-display" id="medNumDisplay">2</div>
+      <button class="num-btn" onclick="adjustMed(0.5)">＋</button>
+    </div>
+    <div class="num-unit">包</div>
+    <button class="btn-primary" onclick="saveMedModal()" style="margin:0 0 8px">保存する</button>
+  </div>
+</div>
+
+<!-- 詳細モーダル -->
+<div class="modal-overlay hidden" id="detailModal" onclick="closeDetailModal(event)">
+  <div class="modal" style="position:relative">
+    <div class="modal-drag"></div>
+    <button class="modal-close" onclick="closeDetailModal()">✕</button>
+    <h3>📋 記録の詳細</h3>
+    <div id="detailContent" style="margin-top:12px"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<input type="file" id="importFile" accept=".csv" style="display:none" onchange="importCSV(event)">
+
+<script>
+'use strict';
+
+// ═══════════════════════════════════════
+//   GITHUB API
+// ═══════════════════════════════════════
+const GH = {
+  BASE: 'https://api.github.com',
+  FILE: 'data/unchi_data.json',
+
+  cfg() {
+    return {
+      token: localStorage.getItem('gh_token') || '',
+      owner: localStorage.getItem('gh_owner') || '',
+      repo:  localStorage.getItem('gh_repo')  || ''
+    };
+  },
+  setCfg(token, owner, repo) {
+    localStorage.setItem('gh_token', token);
+    localStorage.setItem('gh_owner', owner);
+    localStorage.setItem('gh_repo',  repo);
+  },
+  ok() { const c=this.cfg(); return !!(c.token && c.owner && c.repo); },
+  url() { const c=this.cfg(); return `${this.BASE}/repos/${c.owner}/${c.repo}/contents/${this.FILE}`; },
+
+  async read() {
+    const { token } = this.cfg();
+    const res = await fetch(this.url(), {
+      headers: { 'Authorization': `token ${token}`, 'Accept': 'application/vnd.github.v3+json' }
+    });
+    if (res.status === 404) return { data: null, sha: null };
+    if (!res.ok) {
+      const err = await res.json().catch(()=>({}));
+      throw new Error((err.message || res.status) + '');
+    }
+    const json = await res.json();
+    // GitHub wraps base64 with newlines — strip them
+    const decoded = decodeURIComponent(escape(atob(json.content.replace(/\n/g, ''))));
+    return { data: JSON.parse(decoded), sha: json.sha };
+  },
+
+  async write(data, sha) {
+    const { token } = this.cfg();
+    const content = btoa(unescape(encodeURIComponent(JSON.stringify(data, null, 2))));
+    const body = { message: 'うんち記録を更新', content };
+    if (sha) body.sha = sha;
+    const res = await fetch(this.url(), {
+      method: 'PUT',
+      headers: {
+        'Authorization': `token ${token}`,
+        'Accept': 'application/vnd.github.v3+json',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(body)
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(()=>({}));
+      throw new Error(err.message || res.status);
+    }
+    const result = await res.json();
+    return result.content.sha;
+  },
+
+  async createRepo(name) {
+    const { token } = this.cfg();
+    const res = await fetch(`${this.BASE}/user/repos`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `token ${token}`,
+        'Accept': 'application/vnd.github.v3+json',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ name, private: true, description: 'うんち記録データ', auto_init: true })
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(()=>({}));
+      throw new Error(err.message || res.status);
+    }
+    const result = await res.json();
+    return result.full_name; // "owner/repo"
+  }
+};
+
+// ═══════════════════════════════════════
+//   LOCAL DB
+// ═══════════════════════════════════════
+const DB = {
+  KEY: 'unchiApp_v3',
+  SHA: 'gh_sha',
+  get() {
+    try { const d=localStorage.getItem(this.KEY); return d?JSON.parse(d):{records:[],medications:{},defaultMed:2}; }
+    catch(e){ return {records:[],medications:{},defaultMed:2}; }
+  },
+  save(data) { localStorage.setItem(this.KEY, JSON.stringify(data)); },
+  getSHA() { return localStorage.getItem(this.SHA)||null; },
+  setSHA(sha) { if(sha) localStorage.setItem(this.SHA,sha); },
+  addRecord(r) {
+    const data=this.get(); r.id=genId(); data.records.unshift(r);
+    this.save(data); return r;
+  },
+  deleteRecord(id) {
+    const data=this.get(); data.records=data.records.filter(r=>r.id!==id); this.save(data);
+  },
+  getMedForDate(ds) {
+    const data=this.get(); const meds=data.medications||{};
+    const dates=Object.keys(meds).sort(); let amt=data.defaultMed??2;
+    for(const d of dates){ if(d<=ds) amt=meds[d]; } return amt;
+  },
+  setMedForDate(ds,amt) {
+    const data=this.get(); if(!data.medications) data.medications={};
+    data.medications[ds]=amt; this.save(data);
+  },
+  getMedHistory() {
+    const data=this.get();
+    return Object.entries(data.medications||{}).sort((a,b)=>b[0].localeCompare(a[0])).slice(0,60);
+  },
+  merge(remote) {
+    const local=this.get();
+    const map={};
+    [...(remote.records||[]),...(local.records||[])].forEach(r=>{map[r.id]=r;});
+    const records=Object.values(map).sort((a,b)=>new Date(b.datetime)-new Date(a.datetime));
+    const meds=Object.assign({},remote.medications||{},local.medications||{});
+    const result={records,medications:meds,defaultMed:local.defaultMed??remote.defaultMed??2};
+    this.save(result); return result;
+  }
+};
+
+// ═══════════════════════════════════════
+//   SYNC
+// ═══════════════════════════════════════
+let syncState='none', syncBusy=false;
+
+function updateSyncUI() {
+  const dot=document.getElementById('syncDot');
+  const lbl=document.getElementById('syncLabel');
+  if(!dot||!lbl) return;
+  dot.className='sync-dot';
+  if(syncState==='ok')      { lbl.textContent='同期済'; }
+  else if(syncState==='sync'){ dot.classList.add('warn'); lbl.innerHTML='<span class="spin">↻</span>'; }
+  else if(syncState==='err') { dot.classList.add('err');  lbl.textContent='エラー'; }
+  else                       { dot.classList.add('none'); lbl.textContent='未設定'; }
+}
+
+async function doSync(silent=false) {
+  if(syncBusy||!GH.ok()) return;
+  syncBusy=true; syncState='sync'; updateSyncUI();
+  try {
+    const {data:remote, sha} = await GH.read();
+    const merged = remote ? DB.merge(remote) : DB.get();
+    merged.lastUpdated = new Date().toISOString();
+    const newSHA = await GH.write(merged, sha||DB.getSHA());
+    DB.setSHA(newSHA);
+    syncState='ok'; updateSyncUI();
+    if(!silent) showToast('✅ GitHubと同期しました');
+  } catch(e) {
+    syncState='err'; updateSyncUI();
+    showToast('⚠️ 同期エラー: '+e.message);
+  } finally { syncBusy=false; }
+}
+
+async function manualSync() {
+  if(!GH.ok()){ showTab('settings'); showToast('⚙️ まずGitHubを設定してください'); return; }
+  await doSync(false);
+  renderTab(currentTab);
+}
+
+// 30秒ごとに自動同期
+setInterval(()=>{ if(GH.ok()&&syncState!=='sync') doSync(true); }, 30000);
+
+// ═══════════════════════════════════════
+//   UTILS
+// ═══════════════════════════════════════
+const WK='日月火水木金土';
+function pad2(n){return String(n).padStart(2,'0')}
+function genId(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6)}
+function getNow(){const d=new Date();return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}T${pad2(d.getHours())}:${pad2(d.getMinutes())}`}
+function getTodayStr(){return getNow().slice(0,10)}
+function toDateStr(iso){return new Date(iso).toISOString().slice(0,10)}
+function fmtDT(iso){const d=new Date(iso);return `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`}
+function fmtD(ds){const d=new Date(ds+'T00:00:00');return `${d.getMonth()+1}月${d.getDate()}日（${WK[d.getDay()]}）`}
+function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500)}
+function cutoff(days){const d=new Date();d.setDate(d.getDate()-days);return d}
+
+// ═══════════════════════════════════════
+//   APP STATE
+// ═══════════════════════════════════════
+let currentTab='record', chartDays=30, histDays=30;
+let chartInst={}, medAmt=2, formSt={consistency:'normal',amount:'normal'};
+
+// ═══════════════════════════════════════
+//   ROUTING
+// ═══════════════════════════════════════
+function showTab(tab){
+  currentTab=tab;
+  document.querySelectorAll('.nav-item').forEach(el=>el.classList.remove('active'));
+  document.getElementById('nav-'+tab).classList.add('active');
+  renderTab(tab);
+}
+function renderTab(tab){
+  Object.values(chartInst).forEach(c=>{try{c.destroy();}catch(e){}});
+  chartInst={};
+  const el=document.getElementById('mainContent');
+  if(tab==='record')   el.innerHTML=buildRecord();
+  if(tab==='history')  el.innerHTML=buildHistory();
+  if(tab==='chart')  { el.innerHTML=buildChart(); requestAnimationFrame(initCharts); }
+  if(tab==='meds')     el.innerHTML=buildMeds();
+  if(tab==='settings') el.innerHTML=buildSettings();
+  el.scrollTop=0;
+}
+
+// ═══════════════════════════════════════
+//   記録タブ
+// ═══════════════════════════════════════
+function buildRecord(){
+  const med=DB.getMedForDate(getTodayStr());
+  return `<div style="padding:12px 0 0">
+  <div class="form-group"><label class="form-label">📅 日時</label><input type="datetime-local" id="recDT" value="${getNow()}"></div>
+  <div class="form-group"><label class="form-label">💩 硬さ</label>
+    <div class="btn-group">
+      <button class="btn-option" id="c-soft" onclick="selOpt('consistency','soft',this)">💧<br>やわらかい</button>
+      <button class="btn-option selected" id="c-normal" onclick="selOpt('consistency','normal',this)">✅<br>ふつう</button>
+      <button class="btn-option" id="c-hard" onclick="selOpt('consistency','hard',this)">🪨<br>かたい</button>
+    </div></div>
+  <div class="form-group"><label class="form-label">📏 量</label>
+    <div class="btn-group">
+      <button class="btn-option" id="a-small" onclick="selOpt('amount','small',this)">すくない</button>
+      <button class="btn-option selected" id="a-normal" onclick="selOpt('amount','normal',this)">ふつう</button>
+      <button class="btn-option" id="a-large" onclick="selOpt('amount','large',this)">おおい</button>
+    </div></div>
+  <div class="toggle-row"><span style="font-size:15px">🩸 血がついていた</span>
+    <label class="toggle"><input type="checkbox" id="recBlood"><span class="toggle-slider"></span></label></div>
+  <div class="form-group"><label class="form-label">📝 メモ（任意）</label>
+    <textarea id="recMemo" rows="3" placeholder="気になることがあれば..."></textarea></div>
+  <div class="med-bar">
+    <span style="font-size:14px;color:var(--primary)">💊 今日の薬：<strong>${med}包</strong></span>
+    <button class="btn-outline-sm" onclick="showMedDialog()">変更</button>
+  </div>
+  <button class="btn-primary" onclick="submitRecord()">💩 記録する</button>
+</div>`;
+}
+
+function selOpt(field,val,el){
+  formSt[field]=val;
+  const pre=field==='consistency'?'c-':'a-';
+  ['soft','normal','hard','small','large'].forEach(v=>{const b=document.getElementById(pre+v);if(b)b.classList.remove('selected');});
+  el.classList.add('selected');
+}
+
+async function submitRecord(){
+  const dtv=document.getElementById('recDT').value;
+  if(!dtv){showToast('⚠️ 日時を入力してください');return;}
+  const rec={
+    datetime:new Date(dtv).toISOString(),
+    consistency:formSt.consistency, amount:formSt.amount,
+    blood:document.getElementById('recBlood').checked,
+    memo:document.getElementById('recMemo').value.trim(),
+    medication:DB.getMedForDate(dtv.slice(0,10)),
+    source:'iphone'
+  };
+  DB.addRecord(rec);
+  showToast('✅ 記録しました！');
+  formSt={consistency:'normal',amount:'normal'};
+  renderTab('record');
+  if(GH.ok()) doSync(true);
+}
+
+// ═══════════════════════════════════════
+//   履歴タブ
+// ═══════════════════════════════════════
+function buildHistory(){
+  const btns=[7,30,90,365,9999].map(d=>`<button class="filter-btn ${histDays===d?'active':''}" onclick="setHF(${d})">${d===9999?'全て':d===365?'1年':d===90?'3ヶ月':d+'日'}</button>`).join('');
+  return `<div><div class="filter-bar">${btns}</div>${buildList()}</div>`;
+}
+function setHF(d){histDays=d;renderTab('history');}
+
+function buildList(){
+  const data=DB.get();
+  const co=histDays===9999?new Date(0):cutoff(histDays);
+  const recs=data.records.filter(r=>new Date(r.datetime)>=co);
+  if(!recs.length) return `<div class="empty"><div class="empty-icon">📭</div><div>記録がありません</div></div>`;
+  const groups={};
+  recs.forEach(r=>{const d=toDateStr(r.datetime);(groups[d]=groups[d]||[]).push(r);});
+  const sorted=Object.keys(groups).sort((a,b)=>b.localeCompare(a));
+  let html='<div class="card" style="margin-bottom:16px">';
+  sorted.forEach(date=>{
+    html+=`<div class="group-header">${fmtD(date)}　${groups[date].length}回</div>`;
+    groups[date].forEach(r=>{html+=buildItem(r);});
+  });
+  return html+'</div>';
+}
+
+function emo(c){return c==='soft'?'💧':c==='hard'?'🪨':'💩'}
+function cLbl(c){return c==='soft'?'やわらかい':c==='hard'?'かたい':'ふつう'}
+function aLbl(a){return a==='small'?'すくない':a==='large'?'おおい':'ふつう'}
+
+function buildItem(r){
+  const t=new Date(r.datetime);
+  const ts=`${pad2(t.getHours())}:${pad2(t.getMinutes())}`;
+  let badges='';
+  if(r.blood) badges+=`<span class="badge badge-blood">🩸 血あり</span>`;
+  if(r.consistency!=='normal') badges+=`<span class="badge badge-${r.consistency}">${cLbl(r.consistency)}</span>`;
+  if(r.amount!=='normal') badges+=`<span class="badge badge-${r.amount}">${aLbl(r.amount)}</span>`;
+  if(r.source==='watch') badges+=`<span class="badge badge-watch">⌚ Watch</span>`;
+  return `<div class="record-item" onclick="showDetail('${r.id}')">
+  <div class="record-emoji">${emo(r.consistency)}</div>
+  <div class="record-info">
+    <div class="record-date">${ts}　💊${r.medication||2}包${r.memo?' · '+r.memo.slice(0,18)+(r.memo.length>18?'…':''):''}</div>
+    <div class="record-main">${cLbl(r.consistency)} · ${aLbl(r.amount)}</div>
+    ${badges?`<div class="record-badges">${badges}</div>`:''}
+  </div>
+  <span style="color:#C7C7CC;font-size:18px">›</span>
+</div>`;
+}
+
+function showDetail(id){
+  const r=DB.get().records.find(x=>x.id===id);if(!r)return;
+  document.getElementById('detailContent').innerHTML=`
+    <div class="detail-row"><span class="detail-key">📅 日時</span><span class="detail-val">${fmtDT(r.datetime)}</span></div>
+    <div class="detail-row"><span class="detail-key">💩 硬さ</span><span class="detail-val">${emo(r.consistency)} ${cLbl(r.consistency)}</span></div>
+    <div class="detail-row"><span class="detail-key">📏 量</span><span class="detail-val">${aLbl(r.amount)}</span></div>
+    <div class="detail-row"><span class="detail-key">🩸 血</span><span class="detail-val">${r.blood?'<span style="color:var(--red)">✅ あり</span>':'なし'}</span></div>
+    <div class="detail-row"><span class="detail-key">💊 薬</span><span class="detail-val">${r.medication||2}包</span></div>
+    ${r.source==='watch'?'<div class="detail-row"><span class="detail-key">登録元</span><span class="detail-val">⌚ Apple Watch</span></div>':''}
+    ${r.memo?`<div class="detail-row"><span class="detail-key">📝 メモ</span><span class="detail-val" style="max-width:60%;word-break:break-all">${r.memo}</span></div>`:''}
+    <button class="btn-delete" onclick="confirmDelete('${r.id}')">🗑️ この記録を削除</button>`;
+  document.getElementById('detailModal').classList.remove('hidden');
+}
+function closeDetailModal(e){if(e&&e.target!==document.getElementById('detailModal'))return;document.getElementById('detailModal').classList.add('hidden');}
+function confirmDelete(id){
+  if(confirm('この記録を削除しますか？')){
+    DB.deleteRecord(id);closeDetailModal();showToast('🗑️ 削除しました');
+    if(GH.ok()) doSync(true);
+    renderTab('history');
+  }
+}
+
+// ═══════════════════════════════════════
+//   グラフタブ
+// ═══════════════════════════════════════
+function buildChart(){
+  const btns=[7,14,30,90].map(d=>`<button class="filter-btn ${chartDays===d?'active':''}" onclick="setCF(${d})">${d===90?'3ヶ月':d+'日'}</button>`).join('');
+  return `<div><div class="filter-bar">${btns}</div>
+  <div class="stats-grid" id="statsGrid"></div>
+  <div class="section-title">📅 日別の排便回数</div>
+  <div class="card"><div class="chart-container"><canvas id="dailyChart"></canvas></div></div>
+  <div class="section-title">💩 硬さの分布</div>
+  <div class="card"><div class="chart-container-sm"><canvas id="cChart"></canvas></div></div>
+  <div class="section-title">📏 量の分布</div>
+  <div class="card" style="margin-bottom:16px"><div class="chart-container-sm"><canvas id="aChart"></canvas></div></div>
+</div>`;
+}
+function setCF(d){chartDays=d;renderTab('chart');}
+
+function initCharts(){
+  const data=DB.get(); const days=chartDays;
+  const co=cutoff(days);
+  const recs=data.records.filter(r=>new Date(r.datetime)>=co);
+  const dateArr=[];
+  for(let i=days-1;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);dateArr.push(d.toISOString().slice(0,10));}
+  const dwr=new Set(recs.map(r=>toDateStr(r.datetime))).size;
+  const rate=Math.round(dwr/days*100);
+  const bc=recs.filter(r=>r.blood).length;
+  const rc=rate>=80?'#27AE60':rate>=50?'var(--orange)':'var(--red)';
+  document.getElementById('statsGrid').innerHTML=`
+    <div class="stat-card"><div class="stat-num">${recs.length}</div><div class="stat-label">総記録数</div></div>
+    <div class="stat-card"><div class="stat-num" style="color:${rc}">${rate}%</div><div class="stat-label">排便率</div></div>
+    <div class="stat-card"><div class="stat-num">${dwr}</div><div class="stat-label">排便日数</div></div>
+    <div class="stat-card"><div class="stat-num" style="color:${bc>0?'var(--red)':'var(--primary)'}">
+      ${bc}</div><div class="stat-label">血あり回数</div></div>`;
+  const daily={};dateArr.forEach(d=>daily[d]=0);recs.forEach(r=>{const d=toDateStr(r.datetime);if(d in daily)daily[d]++;});
+  const labels=dateArr.map(d=>{const dt=new Date(d+'T00:00:00');return `${dt.getMonth()+1}/${dt.getDate()}`;});
+  const se=days>30?Math.ceil(days/15):1;
+  chartInst.d=new Chart(document.getElementById('dailyChart'),{type:'bar',
+    data:{labels,datasets:[{data:dateArr.map(d=>daily[d]),backgroundColor:dateArr.map(d=>daily[d]>0?'#E8834A':'#E5E5EA'),borderRadius:4,borderSkipped:false}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{y:{beginAtZero:true,ticks:{stepSize:1,font:{size:11}},grid:{color:'#F2F2F7'}},
+        x:{ticks:{maxRotation:45,font:{size:9},callback:(v,i)=>i%se===0?labels[i]:''},grid:{display:false}}}}});
+  const cc={soft:0,normal:0,hard:0};recs.forEach(r=>cc[r.consistency]++);
+  chartInst.c=new Chart(document.getElementById('cChart'),{type:'doughnut',
+    data:{labels:['💧 やわらかい','✅ ふつう','🪨 かたい'],datasets:[{data:[cc.soft,cc.normal,cc.hard],backgroundColor:['#90CAF9','#A5D6A7','#FFCC80'],borderWidth:2,borderColor:'#fff'}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:12},padding:12}}}}});
+  const ac={small:0,normal:0,large:0};recs.forEach(r=>ac[r.amount]++);
+  chartInst.a=new Chart(document.getElementById('aChart'),{type:'doughnut',
+    data:{labels:['すくない','ふつう','おおい'],datasets:[{data:[ac.small,ac.normal,ac.large],backgroundColor:['#EF9A9A','#A5D6A7','#CE93D8'],borderWidth:2,borderColor:'#fff'}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:12},padding:12}}}}});
+}
+
+// ═══════════════════════════════════════
+//   薬タブ
+// ═══════════════════════════════════════
+function buildMeds(){
+  const today=getTodayStr(); const todayMed=DB.getMedForDate(today); const hist=DB.getMedHistory();
+  return `<div>
+  <div class="section-title">今日の薬</div>
+  <div class="med-today-card">
+    <div><div style="font-size:12px;color:var(--text2);margin-bottom:4px;font-weight:500">💊 ${today}</div>
+    <div class="med-amount">${todayMed}<span style="font-size:16px;font-weight:400;color:var(--text2)"> 包</span></div></div>
+    <button class="btn-change" onclick="showMedDialog()">変更</button>
+  </div>
+  <div class="section-title">変更履歴</div>
+  <div class="card" style="margin-bottom:16px">
+    ${hist.length===0?'<div class="empty" style="padding:28px"><div>変更履歴がありません</div><div style="font-size:13px;margin-top:6px">初期値：2包</div></div>':
+      hist.map(([d,a])=>`<div class="med-hist-item"><div><div style="font-size:15px">${fmtD(d)}</div><div style="font-size:12px;color:var(--text2)">${d}</div></div><strong style="font-size:18px;color:var(--primary)">${a}包</strong></div>`).join('')}
+  </div></div>`;
+}
+
+// ═══════════════════════════════════════
+//   設定タブ
+// ═══════════════════════════════════════
+function buildSettings(){
+  const cfg=GH.cfg(); const cnt=DB.get().records.length; const configured=GH.ok();
+  const statusHtml=configured
+    ? `<div class="status-bar ok">✅ GitHub連携済み・iPhoneとApple Watchで同期できます</div>`
+    : `<div class="status-bar warn">⚠️ GitHubが未設定です。下記の手順で設定してください</div>`;
+
+  return `<div>
+  <div class="section-title">☁️ GitHub 連携設定</div>
+  <div class="card" style="padding:16px;margin-bottom:4px">
+    ${statusHtml}
+    <div style="margin-bottom:10px">
+      <label style="font-size:13px;color:var(--text2);display:block;margin-bottom:6px;font-weight:500">🔑 Personal Access Token</label>
+      <input type="password" id="cfgToken" placeholder="ghp_xxxxxxxxxxxx" value="${cfg.token}">
+    </div>
+    <div style="margin-bottom:10px">
+      <label style="font-size:13px;color:var(--text2);display:block;margin-bottom:6px;font-weight:500">👤 GitHubユーザー名</label>
+      <input type="text" id="cfgOwner" placeholder="your-username" value="${cfg.owner}">
+    </div>
+    <div style="margin-bottom:14px">
+      <label style="font-size:13px;color:var(--text2);display:block;margin-bottom:6px;font-weight:500">📦 リポジトリ名</label>
+      <div class="inp-row">
+        <input type="text" id="cfgRepo" placeholder="unchi-data" value="${cfg.repo}">
+        <button onclick="createRepo()">自動作成</button>
+      </div>
+    </div>
+    <button class="btn-primary" onclick="saveGHConfig()" style="margin:0 0 8px">保存して同期</button>
+    ${configured?`<button class="btn-secondary" onclick="manualSync()" style="margin:4px 0 0">↻ 今すぐ同期</button>`:''}
+  </div>
+
+  <div class="card" style="margin-bottom:4px">
+    <div style="padding:14px 16px">
+      <p style="font-size:14px;font-weight:700;margin-bottom:12px">📋 GitHub 設定手順（3分でできます）</p>
+      <div class="step-row"><span class="step-num">1</span><div><strong>github.com</strong> でアカウント作成（または既存アカウントでログイン）</div></div>
+      <div class="step-row"><span class="step-num">2</span><div>右上のアイコン → <strong>Settings</strong> → 左メニュー最下部 <strong>Developer settings</strong></div></div>
+      <div class="step-row"><span class="step-num">3</span><div><strong>Personal access tokens → Tokens (classic)</strong> → 「Generate new token (classic)」</div></div>
+      <div class="step-row"><span class="step-num">4</span><div>Note欄に「うんち記録」と入力 → <strong>repo</strong> にチェック → 「Generate token」</div></div>
+      <div class="step-row"><span class="step-num">5</span><div>表示されたトークン（<span class="gh-badge">ghp_xxxx</span>）をコピーして上の「Token」欄に貼り付け</div></div>
+      <div class="step-row"><span class="step-num">6</span><div>ユーザー名を入力し、「<strong>自動作成</strong>」ボタンでリポジトリを作成</div></div>
+      <div class="step-row"><span class="step-num">7</span><div>「保存して同期」ボタンを押して完了！</div></div>
+      <div class="tip-box">🔒 リポジトリはプライベート（非公開）で作成されるので、他の人には見えません</div>
+    </div>
+  </div>
+
+  <div class="section-title">⌚ Apple Watch ショートカット</div>
+  <div class="card" style="margin-bottom:4px">
+    <div style="padding:14px 16px">
+      <p style="font-size:14px;font-weight:700;margin-bottom:4px">GitHub設定後、このショートカットでWatchから直接保存！</p>
+      <p style="font-size:12px;color:var(--text2);margin-bottom:12px">iPhoneのショートカットアプリで設定します</p>
+      <div class="code-block">${buildWatchCode(cfg)}</div>
+      <p style="font-size:13px;font-weight:600;color:var(--primary);margin:12px 0 8px">📱 設定手順</p>
+      <div class="step-row"><span class="step-num">1</span><div>iPhoneの「<strong>ショートカット</strong>」アプリを開く</div></div>
+      <div class="step-row"><span class="step-num">2</span><div>「＋」で新規作成 → 上記のアクションを順に追加</div></div>
+      <div class="step-row"><span class="step-num">3</span><div>名前を「うんち記録」にして保存</div></div>
+      <div class="step-row"><span class="step-num">4</span><div>Apple Watchの「ショートカット」アプリに自動同期！</div></div>
+      <div class="tip-box">⌚ Watchフェイスのコンプリケーションにショートカットを追加すると1タップで開けます！</div>
+    </div>
+  </div>
+
+  <div class="section-title">データ管理</div>
+  <div class="card" style="margin-bottom:16px">
+    <div class="setting-item" onclick="exportCSV()">
+      <div class="setting-left"><span style="font-size:22px">📤</span><span style="font-size:16px">CSVエクスポート（${cnt}件）</span></div>
+      <span style="color:var(--text2);font-size:20px">›</span>
+    </div>
+    <div class="setting-item" onclick="document.getElementById('importFile').click()">
+      <div class="setting-left"><span style="font-size:22px">📥</span><span style="font-size:16px">CSVインポート</span></div>
+      <span style="color:var(--text2);font-size:20px">›</span>
+    </div>
+  </div>
+</div>`;
+}
+
+function buildWatchCode(cfg){
+  const token = cfg.token ? cfg.token.slice(0,8)+'...' : '【TokenをここにGITHUB_TOKEN】';
+  const owner = cfg.owner || '【ユーザー名】';
+  const repo  = cfg.repo  || '【リポジトリ名】';
+  const url   = `https://api.github.com/repos/${owner}/${repo}/contents/data/unchi_data.json`;
+  return `// ── STEP 1: 現在のデータを取得 ──
+【URLの内容を取得】(GET)
+  URL: ${url}
+  ヘッダー: Authorization = token ${token}
+            Accept = application/vnd.github.v3+json
+→ 結果を変数「APIレスポンス」に保存
+
+// ── STEP 2: 内容とSHAを取り出す ──
+【辞書の値を取得】
+  辞書: APIレスポンス / キー: sha
+→ 変数「ファイルSHA」に保存
+
+【辞書の値を取得】
+  辞書: APIレスポンス / キー: content
+→ 変数「Base64コンテンツ」に保存
+
+// ── STEP 3: Base64デコード → JSONパース ──
+【Base64デコード】
+  入力: Base64コンテンツ（改行を除去）
+→ 変数「JSONテキスト」に保存
+
+【辞書の値を取得】
+  辞書: JSONテキスト / キー: records
+→ 変数「記録リスト」に保存
+
+// ── STEP 4: ユーザー入力 ──
+【リストから選択】「硬さは？」
+  柔らかい / 普通 / 硬い → 変数「硬さ」
+
+【リストから選択】「量は？」
+  少ない / 普通 / 多い → 変数「量」
+
+【リストから選択】「血はついてた？」
+  false / true → 変数「血」
+
+// ── STEP 5: 新しいレコードを作成 ──
+【辞書を作成】
+  datetime → 現在の日付(ISO8601)
+  consistency → 硬さ変数
+  amount → 量変数
+  blood → 血変数
+  memo → （空）
+  medication → 2
+  source → watch
+  id → 乱数テキスト
+→ 変数「新レコード」に保存
+
+// ── STEP 6: リストに追加 ──
+「記録リスト」の先頭に「新レコード」を追加
+
+// ── STEP 7: データ全体を更新・Base64エンコード ──
+【辞書を作成】
+  records → 記録リスト
+→ 変数「新データ」に保存
+
+【テキストをBase64エンコード】
+  入力: 新データ（JSON文字列）
+→ 変数「新Base64」に保存
+
+// ── STEP 8: GitHubに書き戻す ──
+【URLの内容を取得】(PUT)
+  URL: ${url}
+  メソッド: PUT
+  ヘッダー: Authorization = token ${token}
+            Content-Type = application/json
+  本文(JSON):
+    message → うんち記録を更新
+    content → 新Base64
+    sha → ファイルSHA変数
+
+// ── STEP 9: 完了通知 ──
+【通知を表示】✅ うんち記録しました！`;
+}
+
+// ═══════════════════════════════════════
+//   GitHub設定・リポジトリ作成
+// ═══════════════════════════════════════
+async function saveGHConfig(){
+  const token=document.getElementById('cfgToken').value.trim();
+  const owner=document.getElementById('cfgOwner').value.trim();
+  const repo=document.getElementById('cfgRepo').value.trim();
+  if(!token||!owner||!repo){showToast('⚠️ すべての項目を入力してください');return;}
+  GH.setCfg(token,owner,repo);
+  showToast('💾 設定を保存しました');
+  await doSync(false);
+  renderTab('settings');
+}
+
+async function createRepo(){
+  const token=document.getElementById('cfgToken').value.trim();
+  const name=document.getElementById('cfgRepo').value.trim()||'unchi-data';
+  if(!token){showToast('⚠️ 先にTokenを入力してください');return;}
+  // ownerを自動取得
+  showToast('📦 リポジトリを作成中...');
+  try{
+    const me=await fetch('https://api.github.com/user',{headers:{'Authorization':`token ${token}`,'Accept':'application/vnd.github.v3+json'}});
+    if(!me.ok) throw new Error('Token認証失敗');
+    const user=await me.json();
+    document.getElementById('cfgOwner').value=user.login;
+    const full=await GH.createRepo(name);
+    const parts=full.split('/');
+    document.getElementById('cfgOwner').value=parts[0];
+    document.getElementById('cfgRepo').value=parts[1];
+    showToast('✅ リポジトリ作成成功！');
+  }catch(e){ showToast('⚠️ '+e.message); }
+}
+
+// ═══════════════════════════════════════
+//   CSV
+// ═══════════════════════════════════════
+function exportCSV(){
+  const data=DB.get();
+  if(!data.records.length){showToast('⚠️ 記録がありません');return;}
+  const header='id,datetime,consistency,amount,blood,memo,medication,source';
+  const rows=data.records.map(r=>[r.id,r.datetime,r.consistency,r.amount,r.blood,'"'+(r.memo||'').replace(/"/g,'""')+'"',r.medication||2,r.source||'iphone'].join(','));
+  const csv=[header,...rows].join('\r\n');
+  const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.download=`unchi_${getTodayStr()}.csv`;a.click();URL.revokeObjectURL(url);
+  showToast(`📤 ${data.records.length}件エクスポートしました`);
+}
+function importCSV(e){
+  const file=e.target.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    try{
+      const text=ev.target.result.replace(/^\uFEFF/,'');
+      const lines=text.split(/\r?\n/).filter(l=>l.trim());
+      if(lines.length<2){showToast('⚠️ データがありません');return;}
+      const hasId=lines[0].toLowerCase().startsWith('id,');
+      const data=DB.get();let count=0;
+      for(let i=1;i<lines.length;i++){
+        const p=csvParse(lines[i].trim());if(!p.length)continue;
+        try{
+          const r=hasId
+            ?{id:p[0]||genId(),datetime:new Date(p[1]).toISOString(),consistency:p[2]||'normal',amount:p[3]||'normal',blood:p[4]==='true',memo:p[5]||'',medication:parseFloat(p[6])||2,source:p[7]||'import'}
+            :{id:genId(),datetime:new Date(p[0]).toISOString(),consistency:normC(p[1]),amount:normA(p[2]),blood:p[3]==='あり'||p[3]==='true',memo:p[4]||'',medication:parseFloat(p[5])||2,source:'import'};
+          if(!isNaN(new Date(r.datetime))&&!data.records.find(x=>x.id===r.id)){data.records.push(r);count++;}
+        }catch(err){}
+      }
+      data.records.sort((a,b)=>new Date(b.datetime)-new Date(a.datetime));
+      DB.save(data);
+      showToast(`✅ ${count}件インポートしました`);
+      if(GH.ok()) doSync(true);
+      renderTab('settings');
+    }catch(err){showToast('⚠️ 読み込み失敗');}
+  };
+  reader.readAsText(file,'UTF-8');e.target.value='';
+}
+function csvParse(line){const res=[];let cur='';let inQ=false;for(let i=0;i<line.length;i++){const ch=line[i];if(ch==='"'){if(inQ&&line[i+1]==='"'){cur+='"';i++;}else inQ=!inQ;}else if(ch===','&&!inQ){res.push(cur);cur='';}else cur+=ch;}res.push(cur);return res;}
+function normC(s){if(!s)return'normal';s=s.trim();return s==='柔らかい'||s==='soft'?'soft':s==='硬い'||s==='hard'?'hard':'normal';}
+function normA(s){if(!s)return'normal';s=s.trim();return s==='少ない'||s==='small'?'small':s==='多い'||s==='large'?'large':'normal';}
+
+// ═══════════════════════════════════════
+//   薬モーダル
+// ═══════════════════════════════════════
+function showMedDialog(){
+  const today=getTodayStr();medAmt=DB.getMedForDate(today);
+  document.getElementById('medNumDisplay').textContent=medAmt;
+  document.getElementById('medModalDate').textContent=`📅 ${today}`;
+  document.getElementById('medModal').classList.remove('hidden');
+}
+function closeMedModal(e){if(e&&e.target!==document.getElementById('medModal'))return;document.getElementById('medModal').classList.add('hidden');}
+function adjustMed(delta){medAmt=Math.round(Math.max(0,Math.min(10,medAmt+delta))*2)/2;document.getElementById('medNumDisplay').textContent=medAmt;}
+function saveMedModal(){
+  DB.setMedForDate(getTodayStr(),medAmt);
+  document.getElementById('medModal').classList.add('hidden');
+  showToast(`💊 今日の薬を${medAmt}包に設定しました`);
+  if(GH.ok()) doSync(true);
+  if(currentTab==='meds'||currentTab==='record') renderTab(currentTab);
+}
+
+// ═══════════════════════════════════════
+//   INIT
+// ═══════════════════════════════════════
+renderTab('record');
+updateSyncUI();
+if(GH.ok()){ syncState='sync'; updateSyncUI(); doSync(true); }
+</script>
+</body>
+</html>
