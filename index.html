@@ -277,7 +277,11 @@ const DB = {
     this.save(data); return r;
   },
   deleteRecord(id) {
-    const data=this.get(); data.records=data.records.filter(r=>r.id!==id); this.save(data);
+    const data=this.get();
+    data.records=data.records.filter(r=>r.id!==id);
+    if(!data.deletedIds) data.deletedIds=[];
+    if(!data.deletedIds.includes(id)) data.deletedIds.push(id);
+    this.save(data);
   },
   getMedForDate(ds) {
     const data=this.get(); const meds=data.medications||{};
@@ -294,11 +298,15 @@ const DB = {
   },
   merge(remote) {
     const local=this.get();
+    // 削除済みIDをリモート・ローカル両方からマージ
+    const allDeleted=[...new Set([...(remote.deletedIds||[]),...(local.deletedIds||[])])];
     const map={};
     [...(remote.records||[]),...(local.records||[])].forEach(r=>{map[r.id]=r;});
+    // 削除済みのレコードは復活させない
+    allDeleted.forEach(id=>delete map[id]);
     const records=Object.values(map).sort((a,b)=>new Date(b.datetime)-new Date(a.datetime));
     const meds=Object.assign({},remote.medications||{},local.medications||{});
-    const result={records,medications:meds,defaultMed:local.defaultMed??remote.defaultMed??2};
+    const result={records,medications:meds,defaultMed:local.defaultMed??remote.defaultMed??2,deletedIds:allDeleted};
     this.save(result); return result;
   }
 };
@@ -632,14 +640,101 @@ function buildSettings(){
   <div class="card" style="margin-bottom:4px">
     <div style="padding:14px 16px">
       <p style="font-size:14px;font-weight:700;margin-bottom:4px">GitHub設定後、このショートカットでWatchから直接保存！</p>
-      <p style="font-size:12px;color:var(--text2);margin-bottom:12px">iPhoneのショートカットアプリで設定します</p>
-      <div class="code-block">${buildWatchCode(cfg)}</div>
-      <p style="font-size:13px;font-weight:600;color:var(--primary);margin:12px 0 8px">📱 設定手順</p>
-      <div class="step-row"><span class="step-num">1</span><div>iPhoneの「<strong>ショートカット</strong>」アプリを開く</div></div>
-      <div class="step-row"><span class="step-num">2</span><div>「＋」で新規作成 → 上記のアクションを順に追加</div></div>
-      <div class="step-row"><span class="step-num">3</span><div>名前を「うんち記録」にして保存</div></div>
-      <div class="step-row"><span class="step-num">4</span><div>Apple Watchの「ショートカット」アプリに自動同期！</div></div>
-      <div class="tip-box">⌚ Watchフェイスのコンプリケーションにショートカットを追加すると1タップで開けます！</div>
+      <p style="font-size:12px;color:var(--text2);margin-bottom:12px">iPhoneの「ショートカット」アプリで下記の手順通りに作成してください</p>
+
+      ${!GH.ok() ? '<div class="status-bar warn">⚠️ まずGitHub設定を完了してください</div>' : ''}
+
+      <p style="font-size:13px;font-weight:700;color:var(--primary);margin:8px 0 10px">📱 ショートカット作成手順（全13ステップ）</p>
+
+      <div style="font-size:13px;line-height:1.9;color:#333">
+        <div style="background:#F0F7FF;border-radius:8px;padding:10px 12px;margin-bottom:10px;font-size:12px;color:#005A9E">
+          💡 「ショートカット」アプリを開き、右上の「＋」をタップして新規作成してください
+        </div>
+
+        <b>① GETリクエストでデータ取得</b><br>
+        🔍「アクションを検索」→「<b>URLの内容を取得</b>」を追加<br>
+        <div class="code-block" style="font-size:11px;margin:6px 0">URL: ${cfg.owner?`https://api.github.com/repos/${cfg.owner}/${cfg.repo}/contents/data/unchi_data.json`:'https://api.github.com/repos/【ユーザー名】/【リポジトリ名】/contents/data/unchi_data.json'}
+方法: GET
+ヘッダー:
+  Authorization  →  token ${cfg.token||'【トークン】'}
+  Accept  →  application/vnd.github.v3+json</div>
+
+        <b>② SHAを取得して変数に保存</b><br>
+        「<b>辞書の値を取得</b>」→ キー：<code>sha</code> / 辞書：「URLの内容」<br>
+        「<b>変数を設定</b>」→ 変数名：<code>SHA</code><br><br>
+
+        <b>③ content（Base64）を取得</b><br>
+        「<b>辞書の値を取得</b>」→ キー：<code>content</code> / 辞書：「URLの内容」<br>
+        「<b>変数を設定</b>」→ 変数名：<code>B64</code><br><br>
+
+        <b>④ Base64の改行を除去</b><br>
+        「<b>テキストを置き換える</b>」→ 入力：変数B64 / 検索：<code>\n</code>（改行） / 置換：（空欄のまま）<br>
+        「<b>変数を設定</b>」→ 変数名：<code>B64clean</code><br><br>
+
+        <b>⑤ Base64デコード</b><br>
+        「<b>Base64をデコード</b>」→ 入力：変数B64clean<br>
+        「<b>変数を設定</b>」→ 変数名：<code>JSONtext</code><br><br>
+
+        <b>⑥ 硬さを選択</b><br>
+        「<b>リストから選択</b>」→ リスト：<code>やわらかい</code>・<code>ふつう</code>・<code>かたい</code><br>
+        「<b>変数を設定</b>」→ 変数名：<code>hardness</code><br><br>
+
+        <b>⑦ 量を選択</b><br>
+        「<b>リストから選択</b>」→ リスト：<code>すくない</code>・<code>ふつう</code>・<code>おおい</code><br>
+        「<b>変数を設定</b>」→ 変数名：<code>amount</code><br><br>
+
+        <b>⑧ 現在時刻を取得</b><br>
+        「<b>日付</b>」→「現在の日付」<br>
+        「<b>日付のフォーマット</b>」→ フォーマット：<code>ISO 8601</code><br>
+        「<b>変数を設定</b>」→ 変数名：<code>nowISO</code><br><br>
+
+        <b>⑨ 新しいレコード辞書を作成</b><br>
+        「<b>辞書を作成</b>」→ 以下のキーと値を追加：<br>
+        <div class="code-block" style="font-size:11px;margin:6px 0">datetime   → 変数 nowISO
+consistency → 変数 hardness
+amount     → 変数 amount
+blood      → false
+medication → 2
+source     → watch
+id         → 変数 nowISO</div>
+        「<b>変数を設定</b>」→ 変数名：<code>newRecord</code><br><br>
+
+        <b>⑩ 既存データに新レコードを追加</b><br>
+        「<b>辞書の値を取得</b>」→ キー：<code>records</code> / 辞書：変数JSONtext<br>
+        「<b>変数を設定</b>」→ 変数名：<code>records</code><br>
+        「<b>リストに追加</b>」→ 変数recordsの<b>先頭</b>に変数newRecordを追加<br><br>
+
+        <b>⑪ データ全体を組み立て</b><br>
+        「<b>辞書の値を取得</b>」→ キー：<code>medications</code> / 辞書：変数JSONtext → 変数名<code>meds</code><br>
+        「<b>辞書を作成</b>」→ キー追加：<br>
+        <div class="code-block" style="font-size:11px;margin:6px 0">records     → 変数 records
+medications → 変数 meds
+defaultMed  → 2</div>
+        「<b>テキストを取得</b>（辞書として）」<br>
+        「<b>変数を設定</b>」→ 変数名：<code>newJSON</code><br><br>
+
+        <b>⑫ Base64エンコードしてPUT送信</b><br>
+        「<b>テキストをBase64エンコード</b>」→ 入力：変数newJSON<br>
+        「<b>変数を設定</b>」→ 変数名：<code>newB64</code><br>
+        「<b>URLの内容を取得</b>」→<br>
+        <div class="code-block" style="font-size:11px;margin:6px 0">URL: ${cfg.owner?`https://api.github.com/repos/${cfg.owner}/${cfg.repo}/contents/data/unchi_data.json`:'https://api.github.com/repos/【ユーザー名】/【リポジトリ名】/contents/data/unchi_data.json'}
+方法: PUT
+ヘッダー:
+  Authorization  →  token ${cfg.token||'【トークン】'}
+  Content-Type   →  application/json
+本文（辞書）:
+  message  →  うんち記録を追加
+  content  →  変数 newB64
+  sha      →  変数 SHA</div>
+
+        <b>⑬ 完了通知</b><br>
+        「<b>通知を表示</b>」→ タイトル：<code>✅ うんち記録しました！</code><br><br>
+
+        <div style="background:#EEF4E8;border-radius:8px;padding:10px 12px;font-size:12px;color:#3A6B1A">
+          ✅ 名前を「うんち記録」にして保存！<br>
+          ⌚ Apple WatchのショートカットアプリとWatchフェイスに自動で追加されます
+        </div>
+      </div>
     </div>
   </div>
 
@@ -657,84 +752,6 @@ function buildSettings(){
 </div>`;
 }
 
-function buildWatchCode(cfg){
-  const token = cfg.token ? cfg.token.slice(0,8)+'...' : '【TokenをここにGITHUB_TOKEN】';
-  const owner = cfg.owner || '【ユーザー名】';
-  const repo  = cfg.repo  || '【リポジトリ名】';
-  const url   = `https://api.github.com/repos/${owner}/${repo}/contents/data/unchi_data.json`;
-  return `// ── STEP 1: 現在のデータを取得 ──
-【URLの内容を取得】(GET)
-  URL: ${url}
-  ヘッダー: Authorization = token ${token}
-            Accept = application/vnd.github.v3+json
-→ 結果を変数「APIレスポンス」に保存
-
-// ── STEP 2: 内容とSHAを取り出す ──
-【辞書の値を取得】
-  辞書: APIレスポンス / キー: sha
-→ 変数「ファイルSHA」に保存
-
-【辞書の値を取得】
-  辞書: APIレスポンス / キー: content
-→ 変数「Base64コンテンツ」に保存
-
-// ── STEP 3: Base64デコード → JSONパース ──
-【Base64デコード】
-  入力: Base64コンテンツ（改行を除去）
-→ 変数「JSONテキスト」に保存
-
-【辞書の値を取得】
-  辞書: JSONテキスト / キー: records
-→ 変数「記録リスト」に保存
-
-// ── STEP 4: ユーザー入力 ──
-【リストから選択】「硬さは？」
-  柔らかい / 普通 / 硬い → 変数「硬さ」
-
-【リストから選択】「量は？」
-  少ない / 普通 / 多い → 変数「量」
-
-【リストから選択】「血はついてた？」
-  false / true → 変数「血」
-
-// ── STEP 5: 新しいレコードを作成 ──
-【辞書を作成】
-  datetime → 現在の日付(ISO8601)
-  consistency → 硬さ変数
-  amount → 量変数
-  blood → 血変数
-  memo → （空）
-  medication → 2
-  source → watch
-  id → 乱数テキスト
-→ 変数「新レコード」に保存
-
-// ── STEP 6: リストに追加 ──
-「記録リスト」の先頭に「新レコード」を追加
-
-// ── STEP 7: データ全体を更新・Base64エンコード ──
-【辞書を作成】
-  records → 記録リスト
-→ 変数「新データ」に保存
-
-【テキストをBase64エンコード】
-  入力: 新データ（JSON文字列）
-→ 変数「新Base64」に保存
-
-// ── STEP 8: GitHubに書き戻す ──
-【URLの内容を取得】(PUT)
-  URL: ${url}
-  メソッド: PUT
-  ヘッダー: Authorization = token ${token}
-            Content-Type = application/json
-  本文(JSON):
-    message → うんち記録を更新
-    content → 新Base64
-    sha → ファイルSHA変数
-
-// ── STEP 9: 完了通知 ──
-【通知を表示】✅ うんち記録しました！`;
-}
 
 // ═══════════════════════════════════════
 //   GitHub設定・リポジトリ作成
