@@ -290,7 +290,13 @@ const DB = {
   },
   setMedForDate(ds,amt) {
     const data=this.get(); if(!data.medications) data.medications={};
-    data.medications[ds]=amt; this.save(data);
+    data.medications[ds]=amt;
+    // その日付のすでに登録済みレコードも薬の量を更新する
+    data.records=data.records.map(r=>{
+      if(r.datetime && r.datetime.slice(0,10)===ds) return {...r, medication:amt};
+      return r;
+    });
+    this.save(data);
   },
   getMedHistory() {
     const data=this.get();
