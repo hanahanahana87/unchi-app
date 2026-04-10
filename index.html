@@ -151,8 +151,11 @@ textarea:focus,input:focus{border-color:var(--primary)}
   <div class="modal" style="position:relative">
     <div class="modal-drag"></div>
     <button class="modal-close" onclick="closeMedModal()">✕</button>
-    <h3>💊 今日の薬の量</h3>
-    <div style="font-size:13px;color:var(--text2);margin-bottom:4px" id="medModalDate"></div>
+    <h3>💊 薬の量</h3>
+    <div style="margin-bottom:12px">
+      <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">📅 日付</label>
+      <input type="date" id="medModalDate" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:10px;font-size:15px;font-family:inherit" onchange="onMedDateChange()">
+    </div>
     <div class="number-input-row">
       <button class="num-btn" onclick="adjustMed(-0.5)">－</button>
       <div class="num-display" id="medNumDisplay">2</div>
@@ -592,7 +595,7 @@ function buildMeds(){
   <div class="section-title">変更履歴</div>
   <div class="card" style="margin-bottom:16px">
     ${hist.length===0?'<div class="empty" style="padding:28px"><div>変更履歴がありません</div><div style="font-size:13px;margin-top:6px">初期値：2包</div></div>':
-      hist.map(([d,a])=>`<div class="med-hist-item"><div><div style="font-size:15px">${fmtD(d)}</div><div style="font-size:12px;color:var(--text2)">${d}</div></div><strong style="font-size:18px;color:var(--primary)">${a}包</strong></div>`).join('')}
+      hist.map(([d,a])=>`<div class="med-hist-item"><div><div style="font-size:15px">${fmtD(d)}</div><div style="font-size:12px;color:var(--text2)">${d}</div></div><div style="display:flex;align-items:center;gap:10px"><strong style="font-size:18px;color:var(--primary)">${a}包</strong><button class="btn-outline-sm" onclick="showMedDialog('${d}')">修正</button></div></div>`).join('')}
   </div></div>`;
 }
 
@@ -842,18 +845,24 @@ function normA(s){if(!s)return'normal';s=s.trim();return s==='少ない'||s==='s
 // ═══════════════════════════════════════
 //   薬モーダル
 // ═══════════════════════════════════════
-function showMedDialog(){
-  const today=getTodayStr();medAmt=DB.getMedForDate(today);
+function showMedDialog(ds){
+  const date=ds||getTodayStr();
+  medAmt=DB.getMedForDate(date);
+  document.getElementById('medModalDate').value=date;
   document.getElementById('medNumDisplay').textContent=medAmt;
-  document.getElementById('medModalDate').textContent=`📅 ${today}`;
   document.getElementById('medModal').classList.remove('hidden');
+}
+function onMedDateChange(){
+  const ds=document.getElementById('medModalDate').value;
+  if(ds){ medAmt=DB.getMedForDate(ds); document.getElementById('medNumDisplay').textContent=medAmt; }
 }
 function closeMedModal(e){if(e&&e.target!==document.getElementById('medModal'))return;document.getElementById('medModal').classList.add('hidden');}
 function adjustMed(delta){medAmt=Math.round(Math.max(0,Math.min(10,medAmt+delta))*2)/2;document.getElementById('medNumDisplay').textContent=medAmt;}
 function saveMedModal(){
-  DB.setMedForDate(getTodayStr(),medAmt);
+  const ds=document.getElementById('medModalDate').value||getTodayStr();
+  DB.setMedForDate(ds,medAmt);
   document.getElementById('medModal').classList.add('hidden');
-  showToast(`💊 今日の薬を${medAmt}包に設定しました`);
+  showToast(`💊 ${ds} の薬を${medAmt}包に設定しました`);
   if(GH.ok()) doSync(true);
   if(currentTab==='meds'||currentTab==='record') renderTab(currentTab);
 }
