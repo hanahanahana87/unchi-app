@@ -370,7 +370,7 @@ function pad2(n){return String(n).padStart(2,'0')}
 function genId(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6)}
 function getNow(){const d=new Date();return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}T${pad2(d.getHours())}:${pad2(d.getMinutes())}`}
 function getTodayStr(){return getNow().slice(0,10)}
-function toDateStr(iso){return new Date(iso).toISOString().slice(0,10)}
+function toDateStr(iso){return iso.slice(0,10)}
 function fmtDT(iso){const d=new Date(iso);return `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`}
 function fmtD(ds){const d=new Date(ds+'T00:00:00');return `${d.getMonth()+1}月${d.getDate()}日（${WK[d.getDay()]}）`}
 function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500)}
@@ -551,7 +551,7 @@ function initCharts(){
   const co=cutoff(days);
   const recs=data.records.filter(r=>new Date(r.datetime)>=co);
   const dateArr=[];
-  for(let i=days-1;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);dateArr.push(d.toISOString().slice(0,10));}
+  for(let i=days-1;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);dateArr.push(`${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`);}
   const dwr=new Set(recs.map(r=>toDateStr(r.datetime))).size;
   const rate=Math.round(dwr/days*100);
   const bc=recs.filter(r=>r.blood).length;
